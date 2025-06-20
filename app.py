@@ -99,8 +99,8 @@ if "conversation_name" not in st.session_state:
 with st.sidebar:
     st.subheader("모델 선택")
     model_dict = {
-        "o3-mini": "o3-mini",
-        "GPT-4.1": "gpt-4.1"
+        "o4 mini": "o4-mini",
+        "GPT 4.1": "gpt-4.1"
     }
     if "selected_model" not in st.session_state:
         st.session_state.selected_model = list(model_dict.values())[0]
