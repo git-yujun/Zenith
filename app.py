@@ -2,6 +2,7 @@ import streamlit as st
 import sqlite3
 import datetime
 import base64
+import fitz  # PyMuPDF
 from openai import OpenAI
 from os.path import abspath
 
@@ -199,7 +200,6 @@ if uploaded_file is not None:
     elif uploaded_file.type == "application/pdf":
         st.info(f"PDF 파일명: {uploaded_file.name} / {uploaded_file.size // 1024}KB")
         # PDF 텍스트 추출 및 분석
-        import fitz  # PyMuPDF
         pdf_doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
         pdf_text = "\n".join([page.get_text() for page in pdf_doc])
 
@@ -209,9 +209,13 @@ if uploaded_file is not None:
                 response = client.chat.completions.create(
                     model=st.session_state.selected_model,
                     messages=[
-                        {"role": "user", "content": f"{user_prompt}:\n{pdf_text[:]}"}
+                        {
+                            "role": "user", 
+                            "content": [
+                                 {"type": "text", "text": f"{user_prompt}:\n{pdf_text[:]}"}
+                            ],
+                        }
                     ],   
-                    max_tokens=1024
                 )
                 st.success("분석 완료!")
                 st.write(response.choices[0].message.content)
