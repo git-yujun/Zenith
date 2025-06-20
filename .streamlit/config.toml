@@ -10,4 +10,4 @@ font = "sans serif"
 runOnSave = true
 
 [client]
-toolbarMode = "minimal"
+#toolbarMode = "minimal"
