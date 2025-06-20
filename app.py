@@ -7,9 +7,6 @@ from os.path import abspath
 
 DB_FILE = "zenith.db"
 openai_api_key = st.secrets["OPENAI_API_KEY"]
-#GUIDE = ""
-#with open(abspath("AI_Dev\Zenith\guide.txt"), 'r', encoding='UTF-8') as text:
-    #GUIDE += text.read()
 
 # ----------- DB 관련 ----------- #
 def init_db():
@@ -49,12 +46,6 @@ def get_messages(conversation_id):
             (conversation_id,)
         ).fetchall()
         messages = [{"role": role, "content": content} for role, content in rows]
-
-    # system 프롬프트 추가 (맨 앞!)
-    #system_prompt = {
-        #"role": "system",
-        #"content": f"너는 이런 말투로 대화하는 AI야. 아래 말투들을 반드시 따라야 해:\n{GUIDE}"
-    #} [system_prompt] + messages
     return messages
 
 def save_message(conversation_id, role, content):
@@ -173,33 +164,36 @@ st.markdown("---")
 
 uploaded_img = st.file_uploader("Image", type=["jpg", "jpeg", "png", "pdf"], key="zenith_img_upload")
 if uploaded_img is not None:
-    st.image(uploaded_img, width=150)
-    st.info(f"파일명: {uploaded_img.name} / 파일크기: {uploaded_img.size // 1024}KB")
-
-    # base64 encode and data URI
-    bytes_data = uploaded_img.getvalue()
-    mime = uploaded_img.type  # 예: "image/png", "image/jpeg"
-    b64 = base64.b64encode(bytes_data).decode('utf-8')
-    data_url = f"data:{mime};base64,{b64}"
-
-    user_prompt = st.text_input("이 사진에 대해 궁금한 점을 입력하세요", value="이 사진의 내용을 설명해줘", key="image_prompt")
-    if st.button("사진 분석"):
-        with st.spinner("AI가 사진을 분석 중입니다..."):
-            response = client.chat.completions.create(
-                model=st.session_state.selected_model,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": user_prompt},
-                            {"type": "image_url", "image_url": {"url": data_url}},
-                        ],
-                    }
-                ],
-                max_tokens=512,
-            )
-            st.success("분석 완료!")
-            st.write(response.choices[0].message.content)
+    try:
+        st.image(uploaded_img, width=150)
+        st.info(f"파일명: {uploaded_img.name} / 파일크기: {uploaded_img.size // 1024}KB")
+    
+        # base64 encode and data URI
+        bytes_data = uploaded_img.getvalue()
+        mime = uploaded_img.type  # 예: "image/png", "image/jpeg"
+        b64 = base64.b64encode(bytes_data).decode('utf-8')
+        data_url = f"data:{mime};base64,{b64}"
+    
+        user_prompt = st.text_input("이 사진에 대해 궁금한 점을 입력하세요", value="이 사진의 내용을 설명해줘", key="image_prompt")
+        if st.button("사진 분석"):
+            with st.spinner("AI가 사진을 분석 중입니다..."):
+                response = client.chat.completions.create(
+                    model=st.session_state.selected_model,
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": user_prompt},
+                                {"type": "image_url", "image_url": {"url": data_url}},
+                            ],
+                        }
+                    ],
+                    max_tokens=512,
+                )
+                st.success("분석 완료!")
+                st.write(response.choices[0].message.content)
+    except Exception as e:
+        st.error("응답 생성 중 오류 발생: {e}")
 
 # ------------- 채팅 입력 및 답변 생성 ------------- #
 if prompt := st.chat_input("메시지를 입력하세요"):
@@ -208,13 +202,16 @@ if prompt := st.chat_input("메시지를 입력하세요"):
         st.markdown(prompt)
 
     # OpenAI 답변 생성
-    with st.chat_message("assistant", avatar=None): #avatar=AI_img 
-        stream = client.chat.completions.create(
-            model=st.session_state.selected_model,
-            messages=get_messages(st.session_state.conversation_id),
-            stream=True,
-        )
-        response = st.write_stream(stream)
-    save_message(st.session_state.conversation_id, "assistant", response)
-
+    try:
+        with st.chat_message("assistant", avatar=None): #avatar=AI_img 
+            stream = client.chat.completions.create(
+                model=st.session_state.selected_model,
+                messages=get_messages(st.session_state.conversation_id),
+                stream=True,
+            )
+            response = st.write_stream(stream)
+        save_message(st.session_state.conversation_id, "assistant", response)
+    except Exception as e:
+        st.error(f"응답 생성 중 오류 발생: {e}")
+        
     st.rerun()
