@@ -1,0 +1,13 @@
+[theme]
+# 색상 테마: 밤하늘, 청록, 미래 감성
+primaryColor = "#48c6ef"      # Zenith blue(상징색, 버튼·포커스컬러)
+backgroundColor = "#0a192f"   # 딥 네이비(우주 밤하늘)
+secondaryBackgroundColor = "#152642" # 뮤트한 네이비(카드/컨테이너)
+textColor = "#e6f1ff"         # 거의 흰색에 가까운 밝은 청색(가독성 ↑)
+font = "sans serif"
+
+[server]
+runOnSave = true
+
+[client]
+toolbarMode = "minimal"
