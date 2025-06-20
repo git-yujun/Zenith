@@ -162,9 +162,12 @@ for message in st.session_state.messages:
 
 st.markdown("---")
 
-uploaded_img = st.file_uploader("Image", type=["jpg", "jpeg", "png", "pdf"], key="zenith_img_upload")
-if uploaded_img is not None:
-    try:
+uploaded_file = st.file_uploader("이미지 또는 PDF 업로드", type=["jpg", "jpeg", "png", "pdf"])
+if uploaded_file is not None:
+    if uploaded_file.type in ["image/png", "image/jpeg"]:
+        st.image(uploaded_file, width=150)
+        st.info(f"이미지 파일명: {uploaded_file.name} / {uploaded_file.size // 1024}KB")
+
         st.image(uploaded_img, width=150)
         st.info(f"파일명: {uploaded_img.name} / 파일크기: {uploaded_img.size // 1024}KB")
     
@@ -192,8 +195,28 @@ if uploaded_img is not None:
                 )
                 st.success("분석 완료!")
                 st.write(response.choices[0].message.content)
-    except Exception as e:
-        st.error("응답 생성 중 오류 발생: {e}")
+                
+    elif uploaded_file.type == "application/pdf":
+        st.info(f"PDF 파일명: {uploaded_file.name} / {uploaded_file.size // 1024}KB")
+        # PDF 텍스트 추출 및 분석
+        import fitz  # PyMuPDF
+        pdf_doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
+        pdf_text = "\n".join([page.get_text() for page in pdf_doc])
+        st.text_area("PDF 내용 미리보기", pdf_text[:3000])
+
+        if st.button("PDF 내용 분석"):
+            with st.spinner("AI가 PDF 내용을 분석 중입니다..."):
+                response = client.chat.completions.create(
+                    model=st.session_state.selected_model,
+                    messages=[
+                        {"role": "user", "content": f"이 문서를 분석해줘:\n\n{pdf_text[:3000]}"}
+                    ],
+                    max_tokens=500
+                )
+                st.success("분석 완료!")
+                st.write(response.choices[0].message.content)
+    else:
+        st.warning("지원되지 않는 파일 형식입니다.")
 
 # ------------- 채팅 입력 및 답변 생성 ------------- #
 if prompt := st.chat_input("메시지를 입력하세요"):
