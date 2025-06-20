@@ -223,7 +223,7 @@ if st.session_state.selected_model == "gpt-4.1" and uploaded_file is not None:
                 st.write(response.choices[0].message.content)
     else:
         st.warning("지원되지 않는 파일 형식입니다.")
-elif st.session_state.selected_model != "gpt-4.1":
+elif uploaded_file is not None and st.session_state.selected_model != "gpt-4.1":
    st.warning("현재 모델은 파일을 지원하지 않습니다.")
 
 # ------------- 채팅 입력 및 답변 생성 ------------- #
