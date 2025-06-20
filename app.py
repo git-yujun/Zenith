@@ -2,12 +2,14 @@ import streamlit as st
 import sqlite3
 import datetime
 import base64
-import fitz  # PyMuPDF
 from openai import OpenAI
 from os.path import abspath
 
 DB_FILE = "zenith.db"
 openai_api_key = st.secrets["OPENAI_API_KEY"]
+#GUIDE = ""
+#with open(abspath("AI_Dev\Zenith\guide.txt"), 'r', encoding='UTF-8') as text:
+    #GUIDE += text.read()
 
 # ----------- DB 관련 ----------- #
 def init_db():
@@ -47,6 +49,7 @@ def get_messages(conversation_id):
             (conversation_id,)
         ).fetchall()
         messages = [{"role": role, "content": content} for role, content in rows]
+
     return messages
 
 def save_message(conversation_id, role, content):
@@ -163,65 +166,35 @@ for message in st.session_state.messages:
 
 st.markdown("---")
 
-uploaded_file = st.file_uploader("이미지 또는 PDF 업로드", type=["jpg", "jpeg", "png", "pdf"])
-print(uploaded_file)
-if uploaded_file is not None:
-    if uploaded_file.type in ["image/png", "image/jpeg"]:
-        uploaded_img = uploaded_file
-        
-        st.image(uploaded_img, width=150)
-        st.info(f"파일명: {uploaded_img.name} / 파일크기: {uploaded_img.size // 1024}KB")
-    
-        # base64 encode and data URI
-        bytes_data = uploaded_img.getvalue()
-        mime = uploaded_img.type  # 예: "image/png", "image/jpeg"
-        b64 = base64.b64encode(bytes_data).decode('utf-8')
-        data_url = f"data:{mime};base64,{b64}"
-    
-        user_prompt = st.text_input("이 사진에 대해 궁금한 점을 입력하세요", value="이 사진의 내용을 설명해줘", key="image_prompt")
-        if st.button("사진 분석"):
-            with st.spinner("AI가 사진을 분석 중입니다..."):
-                response = client.chat.completions.create(
-                    model=st.session_state.selected_model,
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": [
-                                {"type": "text", "text": user_prompt},
-                                {"type": "image_url", "image_url": {"url": data_url}},
-                            ],
-                        }
-                    ],
-                    max_tokens=512,
-                )
-                st.success("분석 완료!")
-                st.write(response.choices[0].message.content)
-                
-    elif uploaded_file.type == "application/pdf":
-        st.info(f"PDF 파일명: {uploaded_file.name} / {uploaded_file.size // 1024}KB")
-        # PDF 텍스트 추출 및 분석
-        pdf_doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
-        pdf_text = "\n".join([page.get_text() for page in pdf_doc])
+uploaded_img = st.file_uploader("Image", type=["jpg", "jpeg", "png", "pdf"], key="zenith_img_upload")
+if uploaded_img is not None:
+    st.image(uploaded_img, width=150)
+    st.info(f"파일명: {uploaded_img.name} / 파일크기: {uploaded_img.size // 1024}KB")
 
-        user_prompt = st.text_input("이 PDF에 대해 궁금한 점을 입력하세요", value="이 문서를 분석해줘", key="pdf_prompt")
-        if st.button("PDF 분석"):
-            with st.spinner("AI가 PDF 내용을 분석 중입니다..."):
-                response = client.chat.completions.create(
-                    model=st.session_state.selected_model,
-                    messages=[
-                        {
-                            "role": "user", 
-                            "content": [
-                                 {"type": "text", "text": f"{user_prompt}:\n{pdf_text[:4000]}"}
-                            ],
-                        }
-                    ],
-                    max_tokens=512
-                )
-                st.success("분석 완료!")
-                st.write(response.choices[0].message.content)
-    else:
-        st.warning("지원되지 않는 파일 형식입니다.")
+    # base64 encode and data URI
+    bytes_data = uploaded_img.getvalue()
+    mime = uploaded_img.type  # 예: "image/png", "image/jpeg"
+    b64 = base64.b64encode(bytes_data).decode('utf-8')
+    data_url = f"data:{mime};base64,{b64}"
+
+    user_prompt = st.text_input("이 사진에 대해 궁금한 점을 입력하세요", value="이 사진의 내용을 설명해줘", key="image_prompt")
+    if st.button("사진 분석"):
+        with st.spinner("AI가 사진을 분석 중입니다..."):
+            response = client.chat.completions.create(
+                model=st.session_state.selected_model,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": user_prompt},
+                            {"type": "image_url", "image_url": {"url": data_url}},
+                        ],
+                    }
+                ],
+                max_tokens=512,
+            )
+            st.success("분석 완료!")
+            st.write(response.choices[0].message.content)
 
 # ------------- 채팅 입력 및 답변 생성 ------------- #
 if prompt := st.chat_input("메시지를 입력하세요"):
@@ -230,16 +203,13 @@ if prompt := st.chat_input("메시지를 입력하세요"):
         st.markdown(prompt)
 
     # OpenAI 답변 생성
-    try:
-        with st.chat_message("assistant", avatar=None): #avatar=AI_img 
-            stream = client.chat.completions.create(
-                model=st.session_state.selected_model,
-                messages=get_messages(st.session_state.conversation_id),
-                stream=True,
-            )
-            response = st.write_stream(stream)
-        save_message(st.session_state.conversation_id, "assistant", response)
-    except Exception as e:
-        st.error(f"응답 생성 중 오류 발생: {e}")
-        
+    with st.chat_message("assistant", avatar=None): #avatar=AI_img 
+        stream = client.chat.completions.create(
+            model=st.session_state.selected_model,
+            messages=get_messages(st.session_state.conversation_id),
+            stream=True,
+        )
+        response = st.write_stream(stream)
+    save_message(st.session_state.conversation_id, "assistant", response)
+
     st.rerun()
