@@ -8,9 +8,6 @@ from os.path import abspath
 
 DB_FILE = "zenith.db"
 openai_api_key = st.secrets["OPENAI_API_KEY"]
-#GUIDE = ""
-#with open(abspath("AI_Dev\Zenith\guide.txt"), 'r', encoding='UTF-8') as text:
-    #GUIDE += text.read()
 
 # ----------- DB 관련 ----------- #
 def init_db():
@@ -167,7 +164,7 @@ for message in st.session_state.messages:
 
 st.markdown("---")
 
-uploaded_file = st.file_uploader("Image or PDF", type=["jpg", "jpeg", "png", "pdf"], key="zenith_file_upload")
+uploaded_file = st.file_uploader(" ", type=["jpg", "jpeg", "png", "pdf"], key="zenith_file_upload")
     
 if st.session_state.selected_model == "gpt-4.1" and uploaded_file is not None:
     if uploaded_file.type == "application/pdf":
@@ -176,7 +173,7 @@ if st.session_state.selected_model == "gpt-4.1" and uploaded_file is not None:
         pdf_doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
         pdf_text = "".join([page.get_text() for page in pdf_doc])
         
-        user_prompt = st.text_input("이 PDF에 대해 궁금한 점을 입력하세요", value="이 pdf의 내용을 정리해줘", key="pdf_prompt")
+        user_prompt = st.text_input(" ", value="이 pdf의 내용을 정리해줘", key="pdf_prompt")
         if st.button("PDF 분석"):
             with st.spinner("AI가 PDF를 분석 중입니다..."):
                 response = client.chat.completions.create(
@@ -206,7 +203,7 @@ if st.session_state.selected_model == "gpt-4.1" and uploaded_file is not None:
         b64 = base64.b64encode(bytes_data).decode('utf-8')
         data_url = f"data:{mime};base64,{b64}"
     
-        user_prompt = st.text_input("이 사진에 대해 궁금한 점을 입력하세요", value="이 사진의 내용을 설명해줘", key="image_prompt")
+        user_prompt = st.text_input(" ", value="이 사진의 내용을 설명해줘", key="image_prompt")
         if st.button("사진 분석"):
             with st.spinner("AI가 사진을 분석 중입니다..."):
                 response = client.chat.completions.create(
