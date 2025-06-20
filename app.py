@@ -188,11 +188,11 @@ if st.session_state.selected_model == "gpt-4.1" and uploaded_file is not None:
                     ],
                     max_tokens=4096,
                 )
-                 response = st.write_stream(response)
-                 st.success("분석 완료!")
-                 save_message(st.session_state.conversation_id, "assistant", response)
+                response = st.write_stream(response)
+                st.success("분석 완료!")
+                save_message(st.session_state.conversation_id, "assistant", response)
                 
-                 st.rerun()
+                st.rerun()
             
     elif uploaded_file.type in ["image/png", "image/jpeg", "image/jpg"]:
         uploaded_img = uploaded_file
