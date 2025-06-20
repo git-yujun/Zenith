@@ -97,12 +97,25 @@ if "conversation_name" not in st.session_state:
 
 # ------------- 사이드바 ------------- #
 with st.sidebar:
-    st.header("💬 대화 목록")
+    st.subheader("모델 선택")
+    model_dict = {
+        "o3-mini": "o3-mini",
+        "GPT-4.1": "gpt-4.1"
+    }
+    if "selected_model" not in st.session_state:
+        st.session_state.selected_model = list(model_dict.values())[0]
+    st.session_state.selected_model = model_dict[st.selectbox(
+        "OpenAI 모델",
+        list(model_dict.keys()),
+        index=list(model_dict.values()).index(st.session_state.selected_model)
+    )]
+    
+    st.header("대화 목록")
     conversations = get_conversations()
     conv_names = [name for (_id, name) in conversations]
     conv_ids = [_id for (_id, name) in conversations]
 
-    if st.button("➕ 새 대화"):
+    if st.button("새 대화"):
         new_id = create_conversation()
         st.session_state.conversation_id = new_id
         st.rerun()
@@ -135,7 +148,7 @@ with st.sidebar:
         )
                     
         # 대화 삭제 버튼
-        if st.button("🗑️ 현재 대화 삭제"):
+        if st.button("현재 대화 삭제"):
             delete_conversation(st.session_state.conversation_id)
             convs = get_conversations()
             if convs:
@@ -173,7 +186,7 @@ if uploaded_img is not None:
     if st.button("사진 분석"):
         with st.spinner("AI가 사진을 분석 중입니다..."):
             response = client.chat.completions.create(
-                model="gpt-4.1",
+                model=st.session_state.selected_model,
                 messages=[
                     {
                         "role": "user",
@@ -197,7 +210,7 @@ if prompt := st.chat_input("메시지를 입력하세요"):
     # OpenAI 답변 생성
     with st.chat_message("assistant", avatar=None): #avatar=AI_img 
         stream = client.chat.completions.create(
-            model="gpt-4.1",
+            model=st.session_state.selected_model,
             messages=get_messages(st.session_state.conversation_id),
             stream=True,
         )
