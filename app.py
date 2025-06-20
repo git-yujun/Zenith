@@ -90,8 +90,8 @@ if "conversation_name" not in st.session_state:
 with st.sidebar:
     st.subheader("모델 선택")
     model_dict = {
-        "o4 mini": "o4-mini",
-        "GPT 4.1": "gpt-4.1"
+        "o4-mini": "o4-mini",
+        "GPT-4.1": "gpt-4.1"
     }
     if "selected_model" not in st.session_state:
         st.session_state.selected_model = list(model_dict.values())[0]
@@ -202,16 +202,16 @@ if uploaded_file is not None:
         import fitz  # PyMuPDF
         pdf_doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
         pdf_text = "\n".join([page.get_text() for page in pdf_doc])
-        st.text_area("PDF 내용 미리보기", pdf_text[:3000])
 
-        if st.button("PDF 내용 분석"):
+        user_prompt = st.text_input("이 PDF에 대해 궁금한 점을 입력하세요", value="이 문서를 분석해줘", key="pdf_prompt")
+        if st.button("PDF 분석"):
             with st.spinner("AI가 PDF 내용을 분석 중입니다..."):
                 response = client.chat.completions.create(
                     model=st.session_state.selected_model,
                     messages=[
-                        {"role": "user", "content": f"이 문서를 분석해줘:\n\n{pdf_text[:3000]}"}
-                    ],
-                    max_tokens=500
+                        {"role": "user", "content": f"{user_prompt}:\n{pdf_text[:]}"}
+                    ],   
+                    max_tokens=1024
                 )
                 st.success("분석 완료!")
                 st.write(response.choices[0].message.content)
