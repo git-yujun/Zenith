@@ -169,8 +169,8 @@ st.markdown("---")
 
 uploaded_file = st.file_uploader("Image or PDF", type=["jpg", "jpeg", "png", "pdf"], key="zenith_file_upload")
     
-if st.session_state.selected_model == "gpt-4.1" and uploaded_file is not None:
-    if uploaded_file.type == "application/pdf":
+if uploaded_file is not None:
+    if st.session_state.selected_model == "gpt-4.1" and uploaded_file.type == "application/pdf":
         st.info(f"파일명: {uploaded_file.name} / {uploaded_file.size // 1024}KB")
         # PDF 텍스트 추출 및 분석
         pdf_doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
@@ -193,6 +193,8 @@ if st.session_state.selected_model == "gpt-4.1" and uploaded_file is not None:
                 )
                 st.success("분석 완료!")
                 st.write(response.choices[0].message.content)
+    elif st.session_state.selected_model != "gpt-4.1":
+        st.warning("현재 모델은 PDF 파일을 지원하지 않습니다.")
             
     elif uploaded_file.type in ["image/png", "image/jpeg", "image/jpg"]:
         uploaded_img = uploaded_file
