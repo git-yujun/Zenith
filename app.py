@@ -166,9 +166,8 @@ st.markdown("---")
 uploaded_file = st.file_uploader("이미지 또는 PDF 업로드", type=["jpg", "jpeg", "png", "pdf"])
 if uploaded_file is not None:
     if uploaded_file.type in ["image/png", "image/jpeg"]:
-        st.image(uploaded_file, width=150)
-        st.info(f"이미지 파일명: {uploaded_file.name} / {uploaded_file.size // 1024}KB")
-
+        uploaded_img = uploaded_file
+        
         st.image(uploaded_img, width=150)
         st.info(f"파일명: {uploaded_img.name} / 파일크기: {uploaded_img.size // 1024}KB")
     
