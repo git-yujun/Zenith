@@ -164,6 +164,7 @@ for message in st.session_state.messages:
 st.markdown("---")
 
 uploaded_file = st.file_uploader("이미지 또는 PDF 업로드", type=["jpg", "jpeg", "png", "pdf"])
+print(uploaded_file)
 if uploaded_file is not None:
     if uploaded_file.type in ["image/png", "image/jpeg"]:
         uploaded_img = uploaded_file
@@ -211,10 +212,11 @@ if uploaded_file is not None:
                         {
                             "role": "user", 
                             "content": [
-                                 {"type": "text", "text": f"{user_prompt}:\n{pdf_text[:]}"}
+                                 {"type": "text", "text": f"{user_prompt}:\n{pdf_text[:4000]}"}
                             ],
                         }
-                    ],   
+                    ],
+                    max_tokens=512
                 )
                 st.success("분석 완료!")
                 st.write(response.choices[0].message.content)
