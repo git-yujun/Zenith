@@ -175,10 +175,9 @@ if st.session_state.selected_model == "gpt-4.1" and uploaded_file is not None:
         # PDF 텍스트 추출 및 분석
         pdf_doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
         pdf_text = "".join([page.get_text() for page in pdf_doc])
-        st.text_area("PDF 내용 미리보기", pdf_text[:])
     
-        user_prompt = st.text_input("이 사진에 대해 궁금한 점을 입력하세요", value="이 사진의 내용을 설명해줘", key="image_prompt")
-        if st.button("사진 분석"):
+        user_prompt = st.text_input("이 PDF에 대해 궁금한 점을 입력하세요", value="이 pdf의 내용을 정리해줘", key="pdf_prompt")
+        if st.button("PDF 분석"):
             with st.spinner("AI가 PDF를 분석 중입니다..."):
                 response = client.chat.completions.create(
                     model=st.session_state.selected_model,
@@ -190,7 +189,7 @@ if st.session_state.selected_model == "gpt-4.1" and uploaded_file is not None:
                             ],
                         }
                     ],
-                    max_tokens=512,
+                    max_tokens=2048,
                 )
                 st.success("분석 완료!")
                 st.write(response.choices[0].message.content)
