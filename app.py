@@ -168,7 +168,6 @@ uploaded_file = st.file_uploader(" ", type=["jpg", "jpeg", "png", "pdf"], key="z
     
 if st.session_state.selected_model == "gpt-4.1" and uploaded_file is not None:
     if uploaded_file.type == "application/pdf":
-        st.info(f"파일명: {uploaded_file.name} / {uploaded_file.size // 1024}KB")
         # PDF 텍스트 추출 및 분석
         pdf_doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
         pdf_text = "".join([page.get_text() for page in pdf_doc])
@@ -197,9 +196,7 @@ if st.session_state.selected_model == "gpt-4.1" and uploaded_file is not None:
             
     elif uploaded_file.type in ["image/png", "image/jpeg", "image/jpg"]:
         uploaded_img = uploaded_file
-        
         st.image(uploaded_img, width=150)
-        st.info(f"파일명: {uploaded_img.name} / 파일크기: {uploaded_img.size // 1024}KB")
     
         # base64 encode and data URI
         bytes_data = uploaded_img.getvalue()
