@@ -175,6 +175,7 @@ if st.session_state.selected_model == "gpt-4.1" and uploaded_file is not None:
         
         user_prompt = st.text_input(" ", value="이 pdf의 내용을 정리해줘", key="pdf_prompt")
         if st.button("PDF 분석"):
+            save_message(st.session_state.conversation_id, "user", user_prompt)
             with st.spinner("AI가 PDF를 분석 중입니다..."):
                 response = client.chat.completions.create(
                     model=st.session_state.selected_model,
@@ -188,8 +189,11 @@ if st.session_state.selected_model == "gpt-4.1" and uploaded_file is not None:
                     ],
                     max_tokens=4096,
                 )
-                st.success("분석 완료!")
-                st.write(response.choices[0].message.content)
+                 response = st.write_stream(response)
+                 st.success("분석 완료!")
+                 save_message(st.session_state.conversation_id, "assistant", response)
+                
+                 st.rerun()
             
     elif uploaded_file.type in ["image/png", "image/jpeg", "image/jpg"]:
         uploaded_img = uploaded_file
@@ -205,6 +209,7 @@ if st.session_state.selected_model == "gpt-4.1" and uploaded_file is not None:
     
         user_prompt = st.text_input(" ", value="이 사진의 내용을 설명해줘", key="image_prompt")
         if st.button("사진 분석"):
+            save_message(st.session_state.conversation_id, "user", user_prompt)
             with st.spinner("AI가 사진을 분석 중입니다..."):
                 response = client.chat.completions.create(
                     model=st.session_state.selected_model,
@@ -215,12 +220,17 @@ if st.session_state.selected_model == "gpt-4.1" and uploaded_file is not None:
                                 {"type": "text", "text": user_prompt},
                                 {"type": "image_url", "image_url": {"url": data_url}},
                             ],
+                    
                         }
                     ],
+                     stream=True,
                     max_tokens=1024,
                 )
+                response = st.write_stream(response)
                 st.success("분석 완료!")
-                st.write(response.choices[0].message.content)
+                save_message(st.session_state.conversation_id, "assistant", response)
+                
+                st.rerun()
     else:
         st.warning("지원되지 않는 파일 형식입니다.")
 elif uploaded_file is not None and st.session_state.selected_model != "gpt-4.1":
