@@ -170,31 +170,32 @@ st.markdown("---")
 uploaded_file = st.file_uploader("Image or PDF", type=["jpg", "jpeg", "png", "pdf"], key="zenith_file_upload")
     
 if uploaded_file is not None:
-    if st.session_state.selected_model == "gpt-4.1" and uploaded_file.type == "application/pdf":
-        st.info(f"파일명: {uploaded_file.name} / {uploaded_file.size // 1024}KB")
-        # PDF 텍스트 추출 및 분석
-        pdf_doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
-        pdf_text = "".join([page.get_text() for page in pdf_doc])
-    
-        user_prompt = st.text_input("이 PDF에 대해 궁금한 점을 입력하세요", value="이 pdf의 내용을 정리해줘", key="pdf_prompt")
-        if st.button("PDF 분석"):
-            with st.spinner("AI가 PDF를 분석 중입니다..."):
-                response = client.chat.completions.create(
-                    model=st.session_state.selected_model,
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": [
-                                {"type": "text", "text": f"{user_prompt}:\n{pdf_text[:]}"},
-                            ],
-                        }
-                    ],
-                    max_tokens=2048,
-                )
-                st.success("분석 완료!")
-                st.write(response.choices[0].message.content)
-    elif st.session_state.selected_model != "gpt-4.1":
-        st.warning("현재 모델은 PDF 파일을 지원하지 않습니다.")
+    if uploaded_file.type == "application/pdf":
+        if st.session_state.selected_model != "gpt-4.1":
+            st.warning("현재 모델은 PDF 파일을 지원하지 않습니다.")
+        else: 
+            st.info(f"파일명: {uploaded_file.name} / {uploaded_file.size // 1024}KB")
+            # PDF 텍스트 추출 및 분석
+            pdf_doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
+            pdf_text = "".join([page.get_text() for page in pdf_doc])
+        
+            user_prompt = st.text_input("이 PDF에 대해 궁금한 점을 입력하세요", value="이 pdf의 내용을 정리해줘", key="pdf_prompt")
+            if st.button("PDF 분석"):
+                with st.spinner("AI가 PDF를 분석 중입니다..."):
+                    response = client.chat.completions.create(
+                        model=st.session_state.selected_model,
+                        messages=[
+                            {
+                                "role": "user",
+                                "content": [
+                                    {"type": "text", "text": f"{user_prompt}:\n{pdf_text[:]}"},
+                                ],
+                            }
+                        ],
+                        max_tokens=4096,
+                    )
+                    st.success("분석 완료!")
+                    st.write(response.choices[0].message.content)
             
     elif uploaded_file.type in ["image/png", "image/jpeg", "image/jpg"]:
         uploaded_img = uploaded_file
@@ -222,7 +223,7 @@ if uploaded_file is not None:
                             ],
                         }
                     ],
-                    max_tokens=512,
+                    max_tokens=1024,
                 )
                 st.success("분석 완료!")
                 st.write(response.choices[0].message.content)
