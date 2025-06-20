@@ -167,10 +167,9 @@ for message in st.session_state.messages:
 
 st.markdown("---")
 
-if st.session_state.selected_model == "gpt-4.1": 
-    uploaded_file = st.file_uploader("Image or PDF", type=["jpg", "jpeg", "png", "pdf"], key="zenith_file_upload")
+uploaded_file = st.file_uploader("Image or PDF", type=["jpg", "jpeg", "png", "pdf"], key="zenith_file_upload")
     
-if uploaded_file is not None:
+if st.session_state.selected_model == "gpt-4.1" and uploaded_file is not None:
     if uploaded_file.type == "application/pdf":
         st.info(f"파일명: {uploaded_file.name} / {uploaded_file.size // 1024}KB")
         # PDF 텍스트 추출 및 분석
