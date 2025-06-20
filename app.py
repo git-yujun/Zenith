@@ -186,6 +186,7 @@ if st.session_state.selected_model == "gpt-4.1" and uploaded_file is not None:
                             ],
                         }
                     ],
+                    stream=True
                     max_tokens=4096,
                 )
                 response = st.write_stream(response)
