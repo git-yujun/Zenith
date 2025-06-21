@@ -61,6 +61,7 @@ def login_ui():
                 st.sidebar.success("회원가입 성공! 이제 로그인하세요.")
             except sqlite3.IntegrityError:
                 st.sidebar.error("이미 사용 중인 아이디입니다.")
+                
     if action == "로그인" and st.sidebar.button("로그인"):
         with sqlite3.connect(DB_FILE) as conn:
             row = conn.execute(
@@ -70,7 +71,7 @@ def login_ui():
             st.session_state.user_id = row[0]
             st.session_state.username = username
             st.sidebar.success(f"{username} 님 환영합니다!")
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.sidebar.error("아이디 또는 비밀번호가 틀렸습니다.")
 
@@ -150,7 +151,7 @@ with st.sidebar:
     if st.button("새 대화"):
         new_id = create_conversation(st.session_state.user_id)
         st.session_state.conversation_id = new_id
-        st.experimental_rerun()
+        st.rerun()
 
     if convs:
         idx = conv_ids.index(st.session_state.get("conversation_id", conv_ids[0])) \
@@ -176,7 +177,7 @@ with st.sidebar:
                       key="name_input", on_change=_save_name)
         if st.button("대화 삭제"):
             delete_conversation(st.session_state.conversation_id)
-            st.experimental_rerun()
+            st.rerun()
 
 # 최초 대화 설정
 if "conversation_id" not in st.session_state:
@@ -215,7 +216,7 @@ if st.session_state.selected_model == "gpt-4.1" and uploaded:
                 )
                 answer = st.write_stream(resp)
             save_message(st.session_state.conversation_id, "assistant", answer)
-            st.experimental_rerun()
+            st.rerun()
     # 이미지 처리
     elif uploaded.type.startswith("image/"):
         st.image(uploaded, width=200)
@@ -238,7 +239,7 @@ if st.session_state.selected_model == "gpt-4.1" and uploaded:
                 )
                 answer = st.write_stream(resp)
             save_message(st.session_state.conversation_id, "assistant", answer)
-            st.experimental_rerun()
+            st.rerun()
     else:
         st.warning("지원되지 않는 파일 형식입니다.")
 elif uploaded:
@@ -259,4 +260,4 @@ if user_input := st.chat_input("메시지를 입력하세요"):
         answer = st.write_stream(stream)
 
     save_message(st.session_state.conversation_id, "assistant", answer)
-    st.experimental_rerun()
+    st.rerun()
