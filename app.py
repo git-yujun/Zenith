@@ -124,7 +124,7 @@ def save_message(conversation_id, role, content):
 # ---------- 초기 설정 -------------
 init_db()
 client = OpenAI(api_key=openai_api_key)
-st.title("Zenith Chat")
+st.title("Zenith")
 
 # 로그인 전용 UI 및 세션 상태 체크
 if "user_id" not in st.session_state:
