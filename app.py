@@ -215,7 +215,6 @@ if st.session_state.selected_model == "gpt-4.1" and uploaded:
                     stream=True
                 )
                 answer = st.write_stream(resp)
-            st.rerun()
             save_message(st.session_state.conversation_id, "assistant", answer)
             st.rerun()
     # 이미지 처리
@@ -239,7 +238,6 @@ if st.session_state.selected_model == "gpt-4.1" and uploaded:
                     stream=True
                 )
                 answer = st.write_stream(resp)
-            st.rerun()
             save_message(st.session_state.conversation_id, "assistant", answer)
             st.rerun()
     else:
