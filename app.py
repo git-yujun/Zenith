@@ -1,22 +1,32 @@
 import streamlit as st
 import sqlite3
 import datetime
+import hashlib
 import base64
 import fitz
 from openai import OpenAI
-from os.path import abspath
 
 DB_FILE = "zenith.db"
 openai_api_key = st.secrets["OPENAI_API_KEY"]
 
-# ----------- DB 관련 ----------- #
+# ---------- DB 초기화 -------------
 def init_db():
     with sqlite3.connect(DB_FILE) as conn:
         conn.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE,
+                password_hash TEXT
+            )
+        """)
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS conversations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
                 name TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(id)
+            )
         """)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS messages (
@@ -24,31 +34,84 @@ def init_db():
                 conversation_id INTEGER,
                 role TEXT,
                 content TEXT,
-                FOREIGN KEY(conversation_id) REFERENCES conversations(id))
+                FOREIGN KEY(conversation_id) REFERENCES conversations(id)
+            )
         """)
 
-def get_conversations():
-    with sqlite3.connect(DB_FILE) as conn:
-        rows = conn.execute("SELECT id, name FROM conversations ORDER BY created_at DESC").fetchall()
-        return rows
+def hash_password(pw: str) -> str:
+    return hashlib.sha256(pw.encode()).hexdigest()
 
-def create_conversation(name=None):
-    with sqlite3.connect(DB_FILE) as conn:
-        if name is None:
-            name = "New Chat " + datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
-        cur = conn.execute("INSERT INTO conversations (name) VALUES (?)", (name,))
-        return cur.lastrowid
+# ---------- 회원가입 / 로그인 UI -------------
+def login_ui():
+    st.sidebar.subheader("로그인 / 회원가입")
+    action = st.sidebar.radio("선택", ["로그인", "회원가입"])
+    username = st.sidebar.text_input("아이디")
+    password = st.sidebar.text_input("비밀번호", type="password")
+    if action == "회원가입" and st.sidebar.button("회원가입"):
+        if not username or not password:
+            st.sidebar.error("아이디와 비밀번호를 입력해주세요.")
+        else:
+            pw_hash = hash_password(password)
+            try:
+                with sqlite3.connect(DB_FILE) as conn:
+                    conn.execute(
+                        "INSERT INTO users (username, password_hash) VALUES (?, ?)",
+                        (username, pw_hash)
+                    )
+                st.sidebar.success("회원가입 성공! 이제 로그인하세요.")
+            except sqlite3.IntegrityError:
+                st.sidebar.error("이미 사용 중인 아이디입니다.")
+    if action == "로그인" and st.sidebar.button("로그인"):
+        with sqlite3.connect(DB_FILE) as conn:
+            row = conn.execute(
+                "SELECT id, password_hash FROM users WHERE username = ?", (username,)
+            ).fetchone()
+        if row and row[1] == hash_password(password):
+            st.session_state.user_id = row[0]
+            st.session_state.username = username
+            st.sidebar.success(f"{username} 님 환영합니다!")
+            st.experimental_rerun()
+        else:
+            st.sidebar.error("아이디 또는 비밀번호가 틀렸습니다.")
 
-def get_messages(conversation_id):
-    # 기존 DB에서 메시지 불러오기
+# ---------- 대화 관련 DB 함수 -------------
+def get_conversations(user_id):
     with sqlite3.connect(DB_FILE) as conn:
         rows = conn.execute(
-            "SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY id ASC", 
+            "SELECT id, name FROM conversations WHERE user_id = ? ORDER BY created_at DESC",
+            (user_id,)
+        ).fetchall()
+    return rows
+
+def create_conversation(user_id, name=None):
+    if name is None:
+        name = "New Chat " + datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
+    with sqlite3.connect(DB_FILE) as conn:
+        cur = conn.execute(
+            "INSERT INTO conversations (user_id, name) VALUES (?, ?)",
+            (user_id, name)
+        )
+        return cur.lastrowid
+
+def update_conversation_name(conversation_id, new_name):
+    with sqlite3.connect(DB_FILE) as conn:
+        conn.execute(
+            "UPDATE conversations SET name = ? WHERE id = ?",
+            (new_name, conversation_id)
+        )
+
+def delete_conversation(conversation_id):
+    with sqlite3.connect(DB_FILE) as conn:
+        conn.execute("DELETE FROM messages WHERE conversation_id = ?", (conversation_id,))
+        conn.execute("DELETE FROM conversations WHERE id = ?", (conversation_id,))
+
+def get_messages(conversation_id):
+    with sqlite3.connect(DB_FILE) as conn:
+        rows = conn.execute(
+            "SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY id ASC",
             (conversation_id,)
         ).fetchall()
-        messages = [{"role": role, "content": content} for role, content in rows]
-
-    return messages
+    return [{"role": r, "content": c} for r, c in rows]
 
 def save_message(conversation_id, role, content):
     with sqlite3.connect(DB_FILE) as conn:
@@ -57,197 +120,143 @@ def save_message(conversation_id, role, content):
             (conversation_id, role, content)
         )
 
-def update_conversation_name(conversation_id, new_name):
-    with sqlite3.connect(DB_FILE) as conn:
-        conn.execute("UPDATE conversations SET name = ? WHERE id = ?", (new_name, conversation_id))
-
-def delete_conversation(conversation_id):
-    with sqlite3.connect(DB_FILE) as conn:
-        conn.execute("DELETE FROM messages WHERE conversation_id = ?", (conversation_id,))
-        conn.execute("DELETE FROM conversations WHERE id = ?", (conversation_id,))
-
-# ------------- 초기 세팅 ------------- #
+# ---------- 초기 설정 -------------
 init_db()
 client = OpenAI(api_key=openai_api_key)
-st.title("Zenith")
+st.title("Zenith Chat")
 
-#AI_img = abspath("AI_Dev\Zenith\image.png")
+# 로그인 전용 UI 및 세션 상태 체크
+if "user_id" not in st.session_state:
+    login_ui()
+    st.stop()
 
-# ------------- 세션 상태 ------------- #
-if "conversation_id" not in st.session_state:
-    convs = get_conversations()
-    if convs:
-        st.session_state.conversation_id = convs[0][0]
-    else:
-        st.session_state.conversation_id = create_conversation()
-
-if "conversation_name" not in st.session_state:
-    convs = get_conversations()
-    if convs:
-        st.session_state.conversation_name = [name for (_id, name) in convs if _id == st.session_state.conversation_id][0]
-    else:
-        st.session_state.conversation_name = "New Chat"
-
-# ------------- 사이드바 ------------- #
+# ---------- 사이드바: 모델 선택 & 대화 관리 -------------
 with st.sidebar:
+    st.header(f"반갑습니다, {st.session_state.username}님!")
     st.subheader("모델 선택")
-    model_dict = {
-        "o4-mini": "o4-mini",
-        "GPT-4.1": "gpt-4.1"
-    }
+    models = {"o4-mini": "o4-mini", "GPT-4.1": "gpt-4.1"}
     if "selected_model" not in st.session_state:
-        st.session_state.selected_model = list(model_dict.values())[0]
-    st.session_state.selected_model = model_dict[st.selectbox(
-        "OpenAI 모델",
-        list(model_dict.keys()),
-        index=list(model_dict.values()).index(st.session_state.selected_model)
-    )]
-    
-    st.header("대화 목록")
-    conversations = get_conversations()
-    conv_names = [name for (_id, name) in conversations]
-    conv_ids = [_id for (_id, name) in conversations]
+        st.session_state.selected_model = list(models.values())[0]
+    choice = st.selectbox("OpenAI 모델", list(models.keys()),
+                          index=list(models.values()).index(st.session_state.selected_model))
+    st.session_state.selected_model = models[choice]
+
+    st.write("---")
+    st.subheader("대화 목록")
+    convs = get_conversations(st.session_state.user_id)
+    conv_ids = [c[0] for c in convs]
+    conv_names = [c[1] for c in convs]
 
     if st.button("새 대화"):
-        new_id = create_conversation()
+        new_id = create_conversation(st.session_state.user_id)
         st.session_state.conversation_id = new_id
-        st.rerun()
+        st.experimental_rerun()
 
-    if conversations:
-        selected_idx = conv_ids.index(st.session_state.conversation_id)
-        selected_conv = st.radio(
-            "대화 선택", conv_names, index=selected_idx, key="conv_radio"
-        )
-        st.session_state.conversation_id = conv_ids[conv_names.index(selected_conv)]
-        st.session_state.conversation_name = selected_conv
+    if convs:
+        idx = conv_ids.index(st.session_state.get("conversation_id", conv_ids[0])) \
+              if "conversation_id" in st.session_state and st.session_state["conversation_id"] in conv_ids \
+              else 0
+        sel = st.radio("대화 선택", conv_names, index=idx)
+        sel_id = conv_ids[conv_names.index(sel)]
+        st.session_state.conversation_id = sel_id
+        st.session_state.conversation_name = sel
 
-        st.write("---")
-        # 👉 대화명 변경 with 저장 버튼
-        def save_conv_name():
-            new_name = st.session_state["name_text_input"]
-            if new_name.strip() == "":
-                st.warning("대화명은 비워둘 수 없습니다.")
+        # 대화명 변경
+        def _save_name():
+            new = st.session_state["name_input"]
+            if new.strip():
+                update_conversation_name(st.session_state.conversation_id, new)
+                st.session_state.conversation_name = new
+                st.success("이름 변경 완료")
+                st.experimental_rerun()
             else:
-                st.session_state.conversation_name = new_name
-                update_conversation_name(st.session_state.conversation_id, new_name)
-                st.success("이름이 변경되었습니다.")
-                st.rerun()
+                st.warning("이름을 비워둘 수 없습니다.")
 
-        st.text_input(
-            "현재 대화명",
-            st.session_state.conversation_name,
-            key="name_text_input",
-            on_change=save_conv_name,
-        )
-                    
-        # 대화 삭제 버튼
-        if st.button("현재 대화 삭제"):
+        st.text_input("대화명 수정", st.session_state.conversation_name,
+                      key="name_input", on_change=_save_name)
+        if st.button("대화 삭제"):
             delete_conversation(st.session_state.conversation_id)
-            convs = get_conversations()
-            if convs:
-                st.session_state.conversation_id = convs[0][0]
-            else:
-                st.session_state.conversation_id = create_conversation()
-            st.rerun()
+            st.experimental_rerun()
 
-# ------------- 메인: 채팅 히스토리 ------------- #
-messages = get_messages(st.session_state.conversation_id)
-if "messages" not in st.session_state:
-    st.session_state.messages = messages
-else:
-    st.session_state.messages = messages  # always reload from DB in this code
+# 최초 대화 설정
+if "conversation_id" not in st.session_state:
+    cs = get_conversations(st.session_state.user_id)
+    if cs:
+        st.session_state.conversation_id = cs[0][0]
+        st.session_state.conversation_name = cs[0][1]
+    else:
+        cid = create_conversation(st.session_state.user_id)
+        st.session_state.conversation_id = cid
+        st.session_state.conversation_name = "New Chat"
 
-for message in st.session_state.messages:
-    with st.chat_message(message["role"], avatar=None): # avatar=AI_img if message["role"] == "assistant" else None
-        st.markdown(message["content"])
-    
+# ---------- 메인: 채팅 히스토리 표시 -------------
+msgs = get_messages(st.session_state.conversation_id)
+for m in msgs:
+    with st.chat_message(m["role"]):
+        st.markdown(m["content"])
 
 st.markdown("---")
 
-uploaded_file = st.file_uploader(" ", type=["jpg", "jpeg", "png", "pdf"], key="zenith_file_upload")
-    
-if st.session_state.selected_model == "gpt-4.1" and uploaded_file is not None:
-    if uploaded_file.type == "application/pdf":
-        # PDF 텍스트 추출 및 분석
-        pdf_doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
-        pdf_text = "".join([page.get_text() for page in pdf_doc])
-        
-        user_prompt = st.text_input(" ", value="이 pdf의 내용을 정리해줘", key="pdf_prompt")
+# ---------- 파일 업로드 (PDF / 이미지) -------------
+uploaded = st.file_uploader("파일 업로드", type=["pdf", "png", "jpg", "jpeg"])
+if st.session_state.selected_model == "gpt-4.1" and uploaded:
+    # PDF 처리
+    if uploaded.type == "application/pdf":
+        doc = fitz.open(stream=uploaded.read(), filetype="pdf")
+        text = "".join([p.get_text() for p in doc])
+        prompt = st.text_input("질문을 입력하세요", value="이 PDF 내용을 요약해줘")
         if st.button("PDF 분석"):
-            save_message(st.session_state.conversation_id, "user", user_prompt)
-            with st.spinner("AI가 PDF를 분석 중입니다..."):
-                response = client.chat.completions.create(
+            save_message(st.session_state.conversation_id, "user", prompt)
+            with st.spinner("PDF 분석중..."):
+                resp = client.chat.completions.create(
                     model=st.session_state.selected_model,
-                    messages=[
-                            {
-                            "role": "user",
-                            "content": [
-                                {"type": "text", "text": f"{user_prompt}:\n{pdf_text[:]}"},
-                            ],
-                        }
-                    ],
-                    stream=True,
-                    max_tokens=4096,
+                    messages=[{"role":"user","content":[{"type":"text","text":f"{prompt}\n{text}"}]}],
+                    stream=True
                 )
-                response = st.write_stream(response)
-                st.success("분석 완료!")
-                save_message(st.session_state.conversation_id, "assistant", response)
-                
-                st.rerun()
-            
-    elif uploaded_file.type in ["image/png", "image/jpeg", "image/jpg"]:
-        uploaded_img = uploaded_file
-        st.image(uploaded_img, width=150)
-    
-        # base64 encode and data URI
-        bytes_data = uploaded_img.getvalue()
-        mime = uploaded_img.type  # 예: "image/png", "image/jpeg"
-        b64 = base64.b64encode(bytes_data).decode('utf-8')
-        data_url = f"data:{mime};base64,{b64}"
-    
-        user_prompt = st.text_input(" ", value="이 사진의 내용을 설명해줘", key="image_prompt")
-        if st.button("사진 분석"):
-            save_message(st.session_state.conversation_id, "user", user_prompt)
-            with st.spinner("AI가 사진을 분석 중입니다..."):
-                response = client.chat.completions.create(
+                answer = st.write_stream(resp)
+            save_message(st.session_state.conversation_id, "assistant", answer)
+            st.experimental_rerun()
+    # 이미지 처리
+    elif uploaded.type.startswith("image/"):
+        st.image(uploaded, width=200)
+        b64 = base64.b64encode(uploaded.getvalue()).decode()
+        data_url = f"data:{uploaded.type};base64,{b64}"
+        prompt = st.text_input("질문을 입력하세요", value="이 이미지 설명해줘")
+        if st.button("이미지 분석"):
+            save_message(st.session_state.conversation_id, "user", prompt)
+            with st.spinner("이미지 분석중..."):
+                resp = client.chat.completions.create(
                     model=st.session_state.selected_model,
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": [
-                                {"type": "text", "text": user_prompt},
-                                {"type": "image_url", "image_url": {"url": data_url}},
-                            ],
-                    
-                        }
-                    ],
-                     stream=True,
-                    max_tokens=1024,
+                    messages=[{
+                        "role":"user",
+                        "content":[
+                            {"type":"text","text":prompt},
+                            {"type":"image_url","image_url":{"url":data_url}}
+                        ]
+                    }],
+                    stream=True
                 )
-                response = st.write_stream(response)
-                st.success("분석 완료!")
-                save_message(st.session_state.conversation_id, "assistant", response)
-                
-                st.rerun()
+                answer = st.write_stream(resp)
+            save_message(st.session_state.conversation_id, "assistant", answer)
+            st.experimental_rerun()
     else:
         st.warning("지원되지 않는 파일 형식입니다.")
-elif uploaded_file is not None and st.session_state.selected_model != "gpt-4.1":
-   st.warning("현재 모델은 파일을 지원하지 않습니다.")
+elif uploaded:
+    st.warning("현재 모델은 파일 입력을 지원하지 않습니다.")
 
-# ------------- 채팅 입력 및 답변 생성 ------------- #
-if prompt := st.chat_input("메시지를 입력하세요"):
-    save_message(st.session_state.conversation_id, "user", prompt)
+# ---------- 채팅 입력 -------------
+if user_input := st.chat_input("메시지를 입력하세요"):
+    save_message(st.session_state.conversation_id, "user", user_input)
     with st.chat_message("user"):
-        st.markdown(prompt)
+        st.markdown(user_input)
 
-    # OpenAI 답변 생성
-    with st.chat_message("assistant", avatar=None): #avatar=AI_img 
+    with st.chat_message("assistant"):
         stream = client.chat.completions.create(
             model=st.session_state.selected_model,
             messages=get_messages(st.session_state.conversation_id),
-            stream=True,
+            stream=True
         )
-        response = st.write_stream(stream)
-    save_message(st.session_state.conversation_id, "assistant", response)
+        answer = st.write_stream(stream)
 
-    st.rerun()
+    save_message(st.session_state.conversation_id, "assistant", answer)
+    st.experimental_rerun()
