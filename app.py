@@ -176,7 +176,7 @@ with st.sidebar:
                 update_conversation_name(st.session_state.conversation_id, new)
                 st.session_state.conversation_name = new
                 st.success("이름 변경 완료")
-                st.experimental_rerun()
+                st.rerun()
             else:
                 st.warning("이름을 비워둘 수 없습니다.")
 
