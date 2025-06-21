@@ -133,7 +133,14 @@ if "user_id" not in st.session_state:
 
 # ---------- 사이드바: 모델 선택 & 대화 관리 -------------
 with st.sidebar:
-    st.header(f"반갑습니다, {st.session_state.username}님!")
+    st.header(f"{st.session_state.username}")
+    if st.button("로그아웃"):
+        for k in ["user_id", "username", "conversation_id", "conversation_name"]:
+            if k in st.session_state:
+                del st.session_state[k]
+        st.success("로그아웃 되었습니다.")
+        st.rerun()
+        
     st.subheader("모델 선택")
     models = {"o4-mini": "o4-mini", "GPT-4.1": "gpt-4.1"}
     if "selected_model" not in st.session_state:
@@ -199,7 +206,7 @@ for m in msgs:
 st.markdown("---")
 
 # ---------- 파일 업로드 (PDF / 이미지) -------------
-uploaded = st.file_uploader("파일 업로드", type=["pdf", "png", "jpg", "jpeg"])
+uploaded = st.file_uploader("파일 업로드", type=["pdf", "png", "jpg", "jpeg"], key="file_upload")
 if st.session_state.selected_model == "gpt-4.1" and uploaded:
     # PDF 처리
     if uploaded.type == "application/pdf":
@@ -216,6 +223,7 @@ if st.session_state.selected_model == "gpt-4.1" and uploaded:
                 )
                 answer = st.write_stream(resp)
             save_message(st.session_state.conversation_id, "assistant", answer)
+            st.session_state["file_upload"] = None
             st.rerun()
     # 이미지 처리
     elif uploaded.type.startswith("image/"):
@@ -239,6 +247,7 @@ if st.session_state.selected_model == "gpt-4.1" and uploaded:
                 )
                 answer = st.write_stream(resp)
             save_message(st.session_state.conversation_id, "assistant", answer)
+            st.session_state["file_upload"] = None
             st.rerun()
     else:
         st.warning("지원되지 않는 파일 형식입니다.")
