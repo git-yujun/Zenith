@@ -206,7 +206,7 @@ for m in msgs:
 st.markdown("---")
 
 # ---------- 파일 업로드 (PDF / 이미지) -------------
-uploaded = st.file_uploader("파일 업로드", type=["pdf", "png", "jpg", "jpeg"], key="file_upload")
+uploaded = st.file_uploader("파일 업로드", type=["pdf", "png", "jpg", "jpeg"])
 if st.session_state.selected_model == "gpt-4.1" and uploaded:
     # PDF 처리
     if uploaded.type == "application/pdf":
@@ -223,7 +223,6 @@ if st.session_state.selected_model == "gpt-4.1" and uploaded:
                 )
                 answer = st.write_stream(resp)
             save_message(st.session_state.conversation_id, "assistant", answer)
-            st.session_state["file_upload"] = None
             st.rerun()
     # 이미지 처리
     elif uploaded.type.startswith("image/"):
@@ -247,7 +246,6 @@ if st.session_state.selected_model == "gpt-4.1" and uploaded:
                 )
                 answer = st.write_stream(resp)
             save_message(st.session_state.conversation_id, "assistant", answer)
-            st.session_state["file_upload"] = None
             st.rerun()
     else:
         st.warning("지원되지 않는 파일 형식입니다.")
