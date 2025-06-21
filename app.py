@@ -58,7 +58,7 @@ def login_ui():
                         "INSERT INTO users (username, password_hash) VALUES (?, ?)",
                         (username, pw_hash)
                     )
-                st.sidebar.success("회원가입 성공! 이제 로그인하세요.")
+                st.sidebar.success("회원가입이 완료되었습니다.")
             except sqlite3.IntegrityError:
                 st.sidebar.error("이미 사용 중인 아이디입니다.")
                 
@@ -205,7 +205,7 @@ if st.session_state.selected_model == "gpt-4.1" and uploaded:
     if uploaded.type == "application/pdf":
         doc = fitz.open(stream=uploaded.read(), filetype="pdf")
         text = "".join([p.get_text() for p in doc])
-        prompt = st.text_input("질문을 입력하세요", value="이 PDF 내용을 요약해줘")
+        prompt = st.text_input(" ", value="이 PDF 내용을 요약해줘")
         if st.button("PDF 분석"):
             save_message(st.session_state.conversation_id, "user", prompt)
             with st.spinner("PDF 분석중..."):
@@ -215,6 +215,7 @@ if st.session_state.selected_model == "gpt-4.1" and uploaded:
                     stream=True
                 )
                 answer = st.write_stream(resp)
+            st.rerun()
             save_message(st.session_state.conversation_id, "assistant", answer)
             st.rerun()
     # 이미지 처리
@@ -222,7 +223,7 @@ if st.session_state.selected_model == "gpt-4.1" and uploaded:
         st.image(uploaded, width=200)
         b64 = base64.b64encode(uploaded.getvalue()).decode()
         data_url = f"data:{uploaded.type};base64,{b64}"
-        prompt = st.text_input("질문을 입력하세요", value="이 이미지 설명해줘")
+        prompt = st.text_input(" ", value="이 이미지 설명해줘")
         if st.button("이미지 분석"):
             save_message(st.session_state.conversation_id, "user", prompt)
             with st.spinner("이미지 분석중..."):
@@ -238,6 +239,7 @@ if st.session_state.selected_model == "gpt-4.1" and uploaded:
                     stream=True
                 )
                 answer = st.write_stream(resp)
+            st.rerun()
             save_message(st.session_state.conversation_id, "assistant", answer)
             st.rerun()
     else:
