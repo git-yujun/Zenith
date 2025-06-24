@@ -144,7 +144,7 @@ with st.sidebar:
     st.subheader("모델 선택")
     models = {"o4-mini": "o4-mini", "GPT-4.1": "gpt-4.1"}
     if "selected_model" not in st.session_state:
-        st.session_state.selected_model = list(models.values())[0]
+        st.session_state.selected_model = list(models.values())[1]
     choice = st.selectbox("OpenAI 모델", list(models.keys()),
                           index=list(models.values()).index(st.session_state.selected_model))
     st.session_state.selected_model = models[choice]
