@@ -47,6 +47,9 @@ def login_ui():
     username = st.text_input("아이디")
     password = st.text_input("비밀번호", type="password")
     if st.session_state.auth_mode == "signup" and st.button("회원가입"):
+        if st.button("이미 계정이 있으신가요?"):
+            st.session_state.auth_mode = "login"
+        
         if not username or not password:
             st.error("아이디와 비밀번호를 입력해주세요.")
         else:
@@ -62,6 +65,9 @@ def login_ui():
                 st.error("이미 사용 중인 아이디입니다.")
                 
     if st.session_state.auth_mode == "login" and st.button("로그인"):
+        if st.button("이미 계정이 있으신가요?"):
+            st.session_state.auth_mode = "signup"
+            
         with sqlite3.connect(DB_FILE) as conn:
             row = conn.execute(
                 "SELECT id, password_hash FROM users WHERE username = ?", (username,)
@@ -69,7 +75,7 @@ def login_ui():
         if row and row[1] == hash_password(password):
             st.session_state.user_id = row[0]
             st.session_state.username = username
-            st.success(f"{username} 님 환영합니다!")
+            st.success(f"{username}님 환영합니다.")
             st.rerun()
         else:
             st.error("아이디 또는 비밀번호가 틀렸습니다.")
