@@ -43,11 +43,10 @@ def hash_password(pw: str) -> str:
 
 # ---------- 회원가입 / 로그인 UI -------------
 def login_ui():
-    st.subheader("로그인 / 회원가입")
-    action = st.radio("선택", ["로그인", "회원가입"])
+    st.subheader("로그인 / 회원가입") 
     username = st.text_input("아이디")
     password = st.text_input("비밀번호", type="password")
-    if action == "회원가입" and st.button("회원가입"):
+    if st.session_state.auth_mode == "signup" and st.button("회원가입"):
         if not username or not password:
             st.error("아이디와 비밀번호를 입력해주세요.")
         else:
@@ -62,7 +61,7 @@ def login_ui():
             except sqlite3.IntegrityError:
                 st.error("이미 사용 중인 아이디입니다.")
                 
-    if action == "로그인" and st.button("로그인"):
+    if st.session_state.auth_mode == "login" and st.button("로그인"):
         with sqlite3.connect(DB_FILE) as conn:
             row = conn.execute(
                 "SELECT id, password_hash FROM users WHERE username = ?", (username,)
@@ -126,6 +125,8 @@ init_db()
 client = OpenAI(api_key=openai_api_key)
 st.title("Zenith")
 
+if "auth_mode" not in st.session_state:
+    st.session_state.auth_mode = "login"
 # 로그인 전용 UI 및 세션 상태 체크
 if "user_id" not in st.session_state:
     login_ui()
