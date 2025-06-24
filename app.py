@@ -43,13 +43,13 @@ def hash_password(pw: str) -> str:
 
 # ---------- 회원가입 / 로그인 UI -------------
 def login_ui():
-    st.sidebar.subheader("로그인 / 회원가입")
-    action = st.sidebar.radio("선택", ["로그인", "회원가입"])
-    username = st.sidebar.text_input("아이디")
-    password = st.sidebar.text_input("비밀번호", type="password")
-    if action == "회원가입" and st.sidebar.button("회원가입"):
+    st.subheader("로그인 / 회원가입")
+    action = st.radio("선택", ["로그인", "회원가입"])
+    username = st.text_input("아이디")
+    password = st.text_input("비밀번호", type="password")
+    if action == "회원가입" and st.button("회원가입"):
         if not username or not password:
-            st.sidebar.error("아이디와 비밀번호를 입력해주세요.")
+            st.error("아이디와 비밀번호를 입력해주세요.")
         else:
             pw_hash = hash_password(password)
             try:
@@ -58,11 +58,11 @@ def login_ui():
                         "INSERT INTO users (username, password_hash) VALUES (?, ?)",
                         (username, pw_hash)
                     )
-                st.sidebar.success("회원가입이 완료되었습니다.")
+                st.success("회원가입이 완료되었습니다.")
             except sqlite3.IntegrityError:
-                st.sidebar.error("이미 사용 중인 아이디입니다.")
+                st.error("이미 사용 중인 아이디입니다.")
                 
-    if action == "로그인" and st.sidebar.button("로그인"):
+    if action == "로그인" and st.button("로그인"):
         with sqlite3.connect(DB_FILE) as conn:
             row = conn.execute(
                 "SELECT id, password_hash FROM users WHERE username = ?", (username,)
@@ -70,10 +70,10 @@ def login_ui():
         if row and row[1] == hash_password(password):
             st.session_state.user_id = row[0]
             st.session_state.username = username
-            st.sidebar.success(f"{username} 님 환영합니다!")
+            st.success(f"{username} 님 환영합니다!")
             st.rerun()
         else:
-            st.sidebar.error("아이디 또는 비밀번호가 틀렸습니다.")
+            st.error("아이디 또는 비밀번호가 틀렸습니다.")
 
 # ---------- 대화 관련 DB 함수 -------------
 def get_conversations(user_id):
