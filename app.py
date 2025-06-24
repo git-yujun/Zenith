@@ -122,7 +122,7 @@ def save_message(conversation_id, role, content):
         )
 
 # ---------- 초기 설정 -------------
-#init_db()
+init_db()
 client = OpenAI(api_key=openai_api_key)
 st.title("Zenith")
 
