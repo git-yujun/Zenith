@@ -43,7 +43,7 @@ def hash_password(pw: str) -> str:
 
 # ---------- 회원가입 / 로그인 UI -------------
 def login_ui():
-    st.subheader("로그인 / 회원가입") 
+    st.subheader("로그인" if st.session_state.auth_mode == "login" else "회원가입")
     username = st.text_input("아이디")
     password = st.text_input("비밀번호", type="password")
     if st.session_state.auth_mode == "signup" and st.button("회원가입"):
