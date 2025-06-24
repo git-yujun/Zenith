@@ -64,7 +64,7 @@ def login_ui():
             except sqlite3.IntegrityError:
                 st.error("이미 사용 중인 아이디입니다.")
                 
-    if st.session_state.auth_mode == "login" and st.button("로그인")
+    if st.session_state.auth_mode == "login" and st.button("로그인"):
         with sqlite3.connect(DB_FILE) as conn:
             row = conn.execute(
                 "SELECT id, password_hash FROM users WHERE username = ?", (username,)
