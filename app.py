@@ -212,7 +212,7 @@ for m in msgs:
 st.markdown("---")
 
 # ---------- 파일 업로드 (PDF / 이미지) -------------
-uploaded = st.file_uploader("파일 업로드", type=["pdf", "png", "jpg", "jpeg"])
+uploaded = st.file_uploader("파일 업로드", type=["pdf", "txt", "png", "jpg", "jpeg"])
 if st.session_state.selected_model == "gpt-4.1" and uploaded:
     # PDF 처리
     if uploaded.type == "application/pdf":
@@ -225,6 +225,21 @@ if st.session_state.selected_model == "gpt-4.1" and uploaded:
                 resp = client.chat.completions.create(
                     model=st.session_state.selected_model,
                     messages=[{"role":"user","content":[{"type":"text","text":f"{prompt}\n{text}"}]}],
+                    stream=True
+                )
+                answer = st.write_stream(resp)
+            save_message(st.session_state.conversation_id, "assistant", answer)
+            st.rerun()
+    # 텍스트 파일 처리
+    elif uploaded.type == "text/plain":
+        text = uploaded.read().decode(errors="ignore")
+        prompt = st.text_input(" ", value="이 텍스트 파일을 요약해줘")
+        if st.button("텍스트 분석"):
+            save_message(st.session_state.conversation_id, "user", prompt)
+            with st.spinner("텍스트 분석중..."):
+                resp = client.chat.completions.create(
+                    model=st.session_state.selected_model,
+                    messages=[{"role": "user", "content": [{"type": "text", "text": f"{prompt}\n{text}"}]}],
                     stream=True
                 )
                 answer = st.write_stream(resp)
@@ -274,3 +289,4 @@ if user_input := st.chat_input("메시지를 입력하세요"):
 
     save_message(st.session_state.conversation_id, "assistant", answer)
     st.rerun()
+
