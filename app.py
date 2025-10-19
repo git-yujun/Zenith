@@ -148,7 +148,7 @@ with st.sidebar:
         st.rerun()
         
     st.subheader("모델 선택")
-    models = {"o4-mini": "o4-mini", "GPT-4.1": "gpt-4.1"}
+    models = {"o4-mini": "o4-mini", "GPT-4.1": "gpt-4.1", "GPT-5": "gpt-5-2025-08-07"}
     if "selected_model" not in st.session_state:
         st.session_state.selected_model = list(models.values())[1]
     choice = st.selectbox("OpenAI 모델", list(models.keys()),
@@ -289,4 +289,5 @@ if user_input := st.chat_input("메시지를 입력하세요"):
 
     save_message(st.session_state.conversation_id, "assistant", answer)
     st.rerun()
+
 
