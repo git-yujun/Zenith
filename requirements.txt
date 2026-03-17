@@ -1,4 +1,4 @@
 openai
 streamlit
 pymupdf
-duckduckgo-search
+ddgs
