@@ -6,7 +6,7 @@ import base64
 import fitz
 import json
 from openai import OpenAI
-from duckduckgo_search import DDGS
+from ddgs import DDGS
 
 DB_FILE = "zenith.db"
 openai_api_key = st.secrets["OPENAI_API_KEY"]
