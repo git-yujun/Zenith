@@ -366,22 +366,3 @@ if user_input := st.chat_input("메시지를 입력하세요"):
     # 6. 최종 AI 답변만 DB에 저장 (검색 중간 과정은 DB 용량 절약을 위해 생략)
     save_message(st.session_state.conversation_id, "assistant", answer)
     st.rerun()
-"""
-if user_input := st.chat_input("메시지를 입력하세요"):
-    save_message(st.session_state.conversation_id, "user", user_input)
-    with st.chat_message("user"):
-        st.markdown(user_input)
-
-    with st.chat_message("assistant"):
-        stream = client.chat.completions.create(
-            model=st.session_state.selected_model,
-            messages=get_messages(st.session_state.conversation_id),
-            stream=True
-        )
-        answer = st.write_stream(stream)
-
-    save_message(st.session_state.conversation_id, "assistant", answer)
-    st.rerun()
-"""
-
-
