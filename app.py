@@ -4,7 +4,9 @@ import datetime
 import hashlib
 import base64
 import fitz
+import json
 from openai import OpenAI
+from duckduckgo_search import DDGS
 
 DB_FILE = "zenith.db"
 openai_api_key = st.secrets["OPENAI_API_KEY"]
@@ -124,6 +126,37 @@ def save_message(conversation_id, role, content):
             "INSERT INTO messages (conversation_id, role, content) VALUES (?, ?, ?)",
             (conversation_id, role, content)
         )
+
+# ---------- 웹 검색 함수 -------------
+def search_web(query: str) -> str:
+    try:
+        with DDGS() as ddgs:
+            # 상위 3개의 검색 결과만 가져옵니다 (토큰 절약)
+            results = [r for r in ddgs.text(query, max_results=5)]
+        return json.dumps(results, ensure_ascii=False)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+# OpenAI에게 알려줄 도구(Tool) 명세서
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "search_web",
+            "description": "최신 정보, 뉴스, 날씨 등 인터넷 검색이 필요할 때 사용합니다.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "검색어 (예: '오늘 서울 날씨', '최신 AI 뉴스')"
+                    }
+                },
+                "required": ["query"]
+            }
+        }
+    }
+]
 
 # ---------- 초기 설정 -------------
 init_db()
@@ -275,6 +308,66 @@ elif uploaded:
 
 # ---------- 채팅 입력 -------------
 if user_input := st.chat_input("메시지를 입력하세요"):
+    # 1. 사용자 메시지 DB 저장 및 화면 출력
+    save_message(st.session_state.conversation_id, "user", user_input)
+    with st.chat_message("user"):
+        st.markdown(user_input)
+
+    with st.chat_message("assistant"):
+        messages = get_messages(st.session_state.conversation_id)
+        
+        # 2. 첫 번째 API 호출 (도구 사용 여부 판단)
+        # 스트리밍 처리 시 도구 호출 감지가 복잡해지므로, 첫 판단은 일반 호출로 진행합니다.
+        response = client.chat.completions.create(
+            model=st.session_state.selected_model,
+            messages=messages,
+            tools=tools,
+            tool_choice="auto"
+        )
+        
+        response_message = response.choices[0].message
+        
+        # 3. 모델이 검색(도구)을 사용하기로 결정한 경우
+        if response_message.tool_calls:
+            with st.spinner("웹 검색 중... 🌐"):
+                # 모델의 도구 호출 메시지를 대화 기록에 임시 추가
+                messages.append(response_message)
+                
+                # 여러 개의 검색을 동시에 요청할 수 있으므로 반복문 처리
+                for tool_call in response_message.tool_calls:
+                    if tool_call.function.name == "search_web":
+                        function_args = json.loads(tool_call.function.arguments)
+                        search_result = search_web(function_args.get("query"))
+                        
+                        # 검색 결과를 대화 기록에 임시 추가
+                        messages.append({
+                            "tool_call_id": tool_call.id,
+                            "role": "tool",
+                            "name": "search_web",
+                            "content": search_result,
+                        })
+                
+                # 4. 검색 결과를 바탕으로 최종 답변 스트리밍 생성
+                stream = client.chat.completions.create(
+                    model=st.session_state.selected_model,
+                    messages=messages,
+                    stream=True
+                )
+                answer = st.write_stream(stream)
+        else:
+            # 5. 검색이 필요 없는 일반 대화인 경우 (기존 방식대로 스트리밍)
+            stream = client.chat.completions.create(
+                model=st.session_state.selected_model,
+                messages=messages,
+                stream=True
+            )
+            answer = st.write_stream(stream)
+
+    # 6. 최종 AI 답변만 DB에 저장 (검색 중간 과정은 DB 용량 절약을 위해 생략)
+    save_message(st.session_state.conversation_id, "assistant", answer)
+    st.rerun()
+"""
+if user_input := st.chat_input("메시지를 입력하세요"):
     save_message(st.session_state.conversation_id, "user", user_input)
     with st.chat_message("user"):
         st.markdown(user_input)
@@ -289,6 +382,6 @@ if user_input := st.chat_input("메시지를 입력하세요"):
 
     save_message(st.session_state.conversation_id, "assistant", answer)
     st.rerun()
-
+"""
 
 
